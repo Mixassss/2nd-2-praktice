@@ -37,7 +37,7 @@ string BaseDate::checkcommand(string& command) {
         return Insert(command);
     } else if (command.substr(0, 11) == "DELETE FROM") {
         command.erase(0, 12);
-        return isValidDel(command); 
+        return Delete(command); 
     } else if (command.substr(0, 6) == "SELECT") {
         command.erase(0, 7);
         return isValidSelect(command);

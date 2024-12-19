@@ -14,30 +14,32 @@ struct BaseDate {
     int rowLimits; // лимит строк
     SinglyLinkedList<string> nametables; // названия таблиц
     SinglyLinkedList<string> stlb; // столбцы таблиц
-    SinglyLinkedList<int> fileindex; // кол-во файлов таблиц
+    SinglyLinkedList<int> fileindex; // количество файлов таблиц
 
     struct Filter { // структура для фильтрации
         string table;
         string colona;
         string value;
         string logicOP;
-        bool check; // В частности для select, проверка условия(если просто условие - true, если условиестолбец - false)
+        bool check;
     };
 
-    void parser(); // ф-ия парсинга
-    void createdirect(); // ф-ия формирования директории
+    void parser();
+    void createdirect();
 
     /// Функии для INSERT ///
     string checkInsert(string& table, string& values); // Проверка ввода команды инсерта
     string Insert(string& command); // Функция инсерта
 
-    // ф-ии delete
-    string isValidDel(string& command); // ф-ия обработки команды DELETE
-    string del(string& table); // ф-ия удаления всех строк таблицы
-    string delWithValue(string& table, string& stolbec, string& values); // ф-ия удаления строк таблицы по значению
-    string delWithLogic(SinglyLinkedList<Filter>& conditions, string& table); // ф-ия удаления строк таблицы с логикой
+    /// Функции для DELETE ///
+    string delAll(string& table); // Функция очистки всей таблицы
+    string delZnach(string& table, string& stolbec, string& values); // Функция удаления строк по значению
+    string delYslov(SinglyLinkedList<Filter>& conditions, string& table); //Функция удаления по условию
+    string Delete(string& command); // Поверка синтаксиса команды
+    bool parseConditions(string& conditions, string& table, SinglyLinkedList<Filter>& cond);
+    bool isValidColumn(string& table, string& colona);
 
-    // ф-ии select
+    /// Функции для SELECT ///
     string isValidSelect(string& command); // ф-ия проверки ввода команды select
     string select(SinglyLinkedList<Filter>& conditions); // ф-ия обычного селекта
     string selectWithValue(SinglyLinkedList<Filter>& conditions, string& table, string& stolbec, struct Filter value); // ф-ия селекта с where для обычного условия

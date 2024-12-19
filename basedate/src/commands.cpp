@@ -15,7 +15,7 @@ void BaseDate::parser() { // ф-ия парсинга
     }
     rowLimits = objJson["tuples_limit"];
 
-    if (objJson.contains("structure") && objJson["structure"].is_object()) { // проверяем, существование объекта и является ли он объектом
+    if (objJson.contains("structure") && objJson["structure"].is_object()) {
         for (auto elem : objJson["structure"].items()) {
             nametables.pushBack(elem.key());
                 
@@ -47,8 +47,7 @@ void BaseDate::createdirect() {
         file.open(filepath);
         file << stlb.getElementAt(i) << endl;
         file.close();
-
-            // Блокировка таблицы
+        // Блокировка таблицы
         filepath = "../" + BD + "/" + nametables.getElementAt(i) + "/" + nametables.getElementAt(i) + "_lock.txt";
         file.open(filepath);
         file << "open";
@@ -61,9 +60,10 @@ void BaseDate::createdirect() {
     }
 }
 
-string BaseDate::checkInsert(string& table, string& values) { // ф-ия вставки в таблицу
+/// Функии для INSERT ///
+string BaseDate::checkInsert(string& table, string& values) { 
     string filepath = "../" + BD + "/" + table + "/" + table + "_pk_sequence.txt";
-    int index = nametables.getIndex(table); // получаем индекс таблицы(aka key)
+    int index = nametables.getIndex(table); // получаем индекс таблицы
     string val = fileread(filepath);
     int valint = stoi(val);
     valint++;
@@ -119,108 +119,32 @@ string BaseDate::Insert(string& command) {
     return "Операция вставки завершена успешно!";
 }
 
-string BaseDate::isValidDel(string& command) { // ф-ия обработки команды DELETE
-    string table, conditions;
-    int position = command.find_first_of(' ');
-    if (position != -1) {
-        table = command.substr(0, position);
-        conditions = command.substr(position + 1);
-    } else table = command;
-    if (nametables.getIndex(table) != -1) { // проверка таблицы
-        if (conditions.empty()) { // если нет условий, удаляем все
-            return del(table);
-        } else {
-            if (conditions.substr(0, 6) == "where ") { // проверка наличия where
-                conditions.erase(0, 6);
-                SinglyLinkedList<Filter> cond;
-                Filter where;
-                position = conditions.find_first_of(' '); ////
-                if (position != -1) { // проверка синтаксиса
-                    where.colona = conditions.substr(0, position);
-                    conditions.erase(0, position+1);
-                    int index = nametables.getIndex(table);
-                    string str = stlb.getElementAt(index);
-                    stringstream ss(str);
-                    bool check = false;
-                    while (getline(ss, str, ',')) if (str == where.colona) check = true;
-                    if (check) { // проверка столбца
-                        if (conditions[0] == '=' && conditions[1] == ' ') { // проверка синтаксиса
-                            conditions.erase(0, 2);
-                            position = conditions.find_first_of(' ');
-                            if (position == -1) { // если нет лог. оператора
-                                where.value = conditions;
-                                return delWithValue(table, where.colona, where.value);
-                            } else { // если есть логический оператор
-                                where.value = conditions.substr(0, position);
-                                conditions.erase(0, position+1);
-                                cond.pushBack(where);
-                                position = conditions.find_first_of(' ');
-                                if ((position != -1) && (conditions.substr(0, 2) == "or" || conditions.substr(0, 3) == "and")) {
-                                    where.logicOP = conditions.substr(0, position);
-                                    conditions.erase(0, position + 1);
-                                    position = conditions.find_first_of(' ');
-                                    if (position != -1) {
-                                        where.colona = conditions.substr(0, position);
-                                        conditions.erase(0, position+1);
-                                        index = nametables.getIndex(table);
-                                        str = stlb.getElementAt(index);
-                                        stringstream iss(str);
-                                        bool check = false;
-                                        while (getline(iss, str, ',')) if (str == where.colona) check = true;
-                                        if (check) { // проверка столбца
-                                            if (conditions[0] == '=' && conditions[1] == ' ') { // проверка синтаксиса
-                                                conditions.erase(0, 2);
-                                                position = conditions.find_first_of(' ');
-                                                if (position == -1) {
-                                                    where.value = conditions;
-                                                    cond.pushBack(where);
-                                                    return delWithLogic(cond, table);
-                                                } else return "Ошибка, нарушен синтаксис команды!";
-                                            } else return "Ошибка, нарушен синтаксис команды!";
-                                        } else return "Ошибка, нет такого столбца!";
-                                    } else return "Ошибка, нарушен синтаксис команды!";
-                                } else return "Ошибка, нарушен синтаксис команды!";
-                            }
-                        } else return "Ошибка, нарушен синтаксис команды!";
-                    } else return "Ошибка, нет такого столбца!";
-                } else return "Ошибка, нарушен синтаксис команды!";
-            } else return "Ошибка, нарушен синтаксис команды!";
-        }
-    } else return "Ошибка, нет такой таблицы!";
-}
-
-string BaseDate::del(string& table) { // ф-ия удаления всех строк таблицы
+/// Функции для DELETE ///
+string BaseDate::delAll(string& table) {
     string filepath;
     int index = nametables.getIndex(table);
     if (checkLockTable(table)) {
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "close");
-        
-        // очищаем все файлы
-        int copy = fileindex.getElementAt(index);
+        lockTable(table, false);
+
+        int copy = fileindex.getElementAt(index); // очищаем все файлы
         while (copy != 0) {
             filepath = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
             filerec(filepath, "");
             copy--;
         }
-
         filerec(filepath, stlb.getElementAt(index)+"\n"); // добавляем столбцы в 1.csv
-
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "open");
+        lockTable(table, true);
         return "Команда выполнена!";
     } else return "Ошибка, таблица используется другим пользователем!";
 }
 
-string BaseDate::delWithValue(string& table, string& stolbec, string& values) { // ф-ия удаления строк таблицы по значению
+string BaseDate::delZnach(string& table, string& stolbec, string& values) {
     string filepath;
     int index = nametables.getIndex(table);
     if (checkLockTable(table)) {
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "close");
+        lockTable(table, false);
 
-        // нахождение индекса столбца в файле
-        string str = stlb.getElementAt(index);
+        string str = stlb.getElementAt(index); // нахождение индекса столбца в файле
         stringstream ss(str);
         int stolbecindex = 0;
         while (getline(ss, str, ',')) {
@@ -228,8 +152,7 @@ string BaseDate::delWithValue(string& table, string& stolbec, string& values) { 
             stolbecindex++;
         }
 
-        // удаление строк
-        int copy = fileindex.getElementAt(index);
+        int copy = fileindex.getElementAt(index); // удаление строк
         while (copy != 0) {
             filepath = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
             string text = fileread(filepath);
@@ -253,22 +176,19 @@ string BaseDate::delWithValue(string& table, string& stolbec, string& values) { 
             copy--;
         }
 
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "open");
+        lockTable(table, true);
         return "Команда выполнена!";
     } else return "Ошибка, таблица используется другим пользователем!";
 }
 
-string BaseDate::delWithLogic(SinglyLinkedList<Filter>& conditions, string& table) { // ф-ия удаления строк таблицы с логикой
-    string filepath;
+string BaseDate::delYslov(SinglyLinkedList<Filter>& conditions, string& table) {
+    string fin;
     int index = nametables.getIndex(table);
     if (checkLockTable(table)) {
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "close");
+        lockTable(table, false);
 
-        // нахождение индекса столбцов в файле
-        SinglyLinkedList<int> stlbindex;
-        for (int i = 0; i < conditions.size(); ++i) {
+        SinglyLinkedList<int> stlbindex; // нахождение индекса столбцов в файле
+        for (int i = 0; i < conditions.elementCount; ++i) {
             string str = stlb.getElementAt(index);
             stringstream ss(str);
             int stolbecindex = 0;
@@ -281,16 +201,15 @@ string BaseDate::delWithLogic(SinglyLinkedList<Filter>& conditions, string& tabl
             }
         }
 
-        // удаление строк
-        int copy = fileindex.getElementAt(index);
+        int copy = fileindex.getElementAt(index); // удаление строк
         while (copy != 0) {
-            filepath = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
-            string text = fileread(filepath);
+            fin = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
+            string text = fileread(fin);
             stringstream stroka(text);
             string filteredRows;
             while (getline(stroka, text)) {
                 SinglyLinkedList<bool> shouldRemove;
-                for (int i = 0; i < stlbindex.size(); ++i) {
+                for (int i = 0; i < stlbindex.elementCount; ++i) {
                     stringstream iss(text);
                     string token;
                     int currentIndex = 0;
@@ -305,23 +224,110 @@ string BaseDate::delWithLogic(SinglyLinkedList<Filter>& conditions, string& tabl
                     if (check) shouldRemove.pushBack(true);
                     else shouldRemove.pushBack(false);
                 }
-                if (conditions.getElementAt(1).logicOP == "and") { // Если оператор И
+                if (conditions.getElementAt(1).logicOP == "AND") { // Если оператор И
                     if (shouldRemove.getElementAt(0) && shouldRemove.getElementAt(1));
                     else filteredRows += text + "\n";
                 } else { // Если оператор ИЛИ
                     if (!(shouldRemove.getElementAt(0)) && !(shouldRemove.getElementAt(1))) filteredRows += text + "\n";
                 }
             }
-            filerec(filepath, filteredRows);
+            filerec(fin, filteredRows);
             copy--;
         }
-
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "open");
+        lockTable(table, true);
         return "Команда выполнена!";
     } else return "Ошибка, таблица используется другим пользователем!";
 }
 
+string BaseDate::Delete(string& command) {
+    string table, conditions;
+    int position = command.find_first_of(' ');
+
+    if (position != -1) {
+        table = command.substr(0, position);
+        conditions = command.substr(position + 1);
+    } else {
+        table = command;
+    }
+    if (nametables.getIndex(table) == -1) {
+        return "Ошибка, нет такой таблицы!";
+    }
+    if (conditions.empty()) {
+       return delAll(table);
+    }
+    if (conditions.substr(0, 6) != "WHERE ") {
+        return "Ошибка, нарушен синтаксис команды!";
+    }
+    conditions.erase(0, 6);
+    SinglyLinkedList<Filter> cond;
+    if (!parseConditions(conditions, table, cond)) {
+        return "Ошибка, нарушен синтаксис команды!";
+    }
+
+    if (cond.elementCount == 1) {
+        string colona = cond.getElementAt(0).colona;
+        string value = cond.getElementAt(0).value;
+        delZnach(table, colona, value);
+    } else {
+        delYslov(cond, table);
+    }
+    return "Операция удаления завершена успешно.";
+}
+
+bool BaseDate::parseConditions(string& conditions, string& table, SinglyLinkedList<Filter>& cond) {
+    Filter where;
+    int position = conditions.find_first_of(' ');
+
+    if (position == -1) return false;
+
+    where.colona = conditions.substr(0, position);
+    if (!isValidColumn(table, where.colona)) return false;
+
+    conditions.erase(0, position + 1);
+    if (conditions.substr(0, 2) != "= ") return false;
+
+    conditions.erase(0, 2);
+    position = conditions.find_first_of(' ');
+    where.value = (position == -1) ? conditions : conditions.substr(0, position);
+
+    cond.pushBack(where);
+
+    if (position == -1) return true;
+
+    conditions.erase(0, position + 1);
+    position = conditions.find_first_of(' ');
+    if (position == -1 || (conditions.substr(0, 2) != "OR" && conditions.substr(0, 3) != "AND")) return false;
+
+    where.logicOP = conditions.substr(0, position);
+    conditions.erase(0, position + 1);
+
+    position = conditions.find_first_of(' ');
+    where.colona = (position == -1) ? conditions : conditions.substr(0, position);
+    if (!isValidColumn(table, where.colona)) return false;
+
+    conditions.erase(0, position + 1);
+    if (conditions.substr(0, 2) != "= ") return false;
+
+    conditions.erase(0, 2);
+    where.value = conditions;
+    cond.pushBack(where);
+
+    return true;
+}
+
+bool BaseDate::isValidColumn(string& table, string& colona) {
+    int index = nametables.getIndex(table);
+    string str = stlb.getElementAt(index);
+    stringstream ss(str);
+    string column;
+
+    while (getline(ss, column, ',')) {
+        if (column == colona) return true;
+    }
+
+    cout << "Ошибка, нет такого столбца!" << endl;
+    return false;
+}
 
 string BaseDate::isValidSelect(string& command) { // ф-ия проверки ввода команды select
     Filter conditions;
