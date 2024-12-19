@@ -24,6 +24,7 @@ struct BaseDate {
         bool check;
     };
 
+    string checkcommand(string& command);  // Функция ввода команд
     void parser();
     void createdirect();
 
@@ -40,20 +41,19 @@ struct BaseDate {
     bool isValidColumn(string& table, string& colona);
 
     /// Функции для SELECT ///
-    string isValidSelect(string& command); // ф-ия проверки ввода команды select
-    string select(SinglyLinkedList<Filter>& conditions); // ф-ия обычного селекта
+    string selectall(SinglyLinkedList<Filter>& conditions); // ф-ия обычного селекта
     string selectWithValue(SinglyLinkedList<Filter>& conditions, string& table, string& stolbec, struct Filter value); // ф-ия селекта с where для обычного условия
     string selectWithLogic(SinglyLinkedList<Filter>& conditions, SinglyLinkedList<string>& table, SinglyLinkedList<string>& stolbec, SinglyLinkedList<Filter>& value);
 
     // Вспомогательные ф-ии, чтобы избежать повтора кода в основных ф-иях
     bool checkLockTable(string table); // ф-ия проверки, закрыта ли таблица
     string lockTable(string& table, bool open);
-    string checkcommand(string& command);  // Функция ввода команд
-    SinglyLinkedList<int> findIndexStlb(SinglyLinkedList<Filter>& conditions); // ф-ия нахождения индекса столбцов(для select)
+    SinglyLinkedList<int> findIndexColona(SinglyLinkedList<Filter>& conditions); // ф-ия нахождения индекса столбцов(для select)
     int findIndexStlbCond(string table, string stolbec); // ф-ия нахождения индекса столбца условия(для select)
     SinglyLinkedList<string> textInFile(SinglyLinkedList<Filter>& conditions); // ф-ия инпута текста из таблиц(для select)
-    SinglyLinkedList<string> findStlbTable(SinglyLinkedList<Filter>& conditions, SinglyLinkedList<string>& tables, int stlbindexvalnext, string table); // ф-ия инпута нужных колонок из таблиц для условиястолбец(для select)
-    string sample(SinglyLinkedList<int>& stlbindex, SinglyLinkedList<string>& tables); // ф-ия выборки(для select)
+    SinglyLinkedList<string> InputTable(SinglyLinkedList<Filter>& conditions, SinglyLinkedList<string>& tables, int stlbindexvalnext, string table); // ф-ия инпута нужных колонок из таблиц для условиястолбец(для select)
+    string selection(SinglyLinkedList<int>& stlbindex, SinglyLinkedList<string>& tables); // ф-ия выборки(для select)
+    string Select(string& command);
 };
 
 #include "../src/commands.cpp"

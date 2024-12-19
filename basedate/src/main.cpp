@@ -40,7 +40,7 @@ string BaseDate::checkcommand(string& command) {
         return Delete(command); 
     } else if (command.substr(0, 6) == "SELECT") {
         command.erase(0, 7);
-        return isValidSelect(command);
+        return Select(command);
     } else if (command == "STOP") {
         exit(0);
     } else {
