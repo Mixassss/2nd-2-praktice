@@ -24,13 +24,12 @@ struct BaseDate {
         bool check; // В частности для select, проверка условия(если просто условие - true, если условиестолбец - false)
     };
 
-    void parse(); // ф-ия парсинга
-    void mkdir(); // ф-ия формирования директории
-    string checkcommand(string& command); // ф-ия фильтрации команд
+    void parser(); // ф-ия парсинга
+    void createdirect(); // ф-ия формирования директории
 
-    // ф-ии insert
-    string isValidInsert(string& command); // ф-ия обработки команды INSERT
-    string insert(string& table, string& values); // ф-ия вставки в таблицу
+    /// Функии для INSERT ///
+    string checkInsert(string& table, string& values); // Проверка ввода команды инсерта
+    string Insert(string& command); // Функция инсерта
 
     // ф-ии delete
     string isValidDel(string& command); // ф-ия обработки команды DELETE
@@ -46,6 +45,8 @@ struct BaseDate {
 
     // Вспомогательные ф-ии, чтобы избежать повтора кода в основных ф-иях
     bool checkLockTable(string table); // ф-ия проверки, закрыта ли таблица
+    string lockTable(string& table, bool open);
+    string checkcommand(string& command);  // Функция ввода команд
     SinglyLinkedList<int> findIndexStlb(SinglyLinkedList<Filter>& conditions); // ф-ия нахождения индекса столбцов(для select)
     int findIndexStlbCond(string table, string stolbec); // ф-ия нахождения индекса столбца условия(для select)
     SinglyLinkedList<string> textInFile(SinglyLinkedList<Filter>& conditions); // ф-ия инпута текста из таблиц(для select)

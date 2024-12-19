@@ -1,38 +1,6 @@
 #include "../include/commands.h"
 
-int countingLine (string& fin) { // ф-ия подсчёта строк в файле
-    ifstream file;
-    file.open(fin);
-    int countline = 0;
-    string line;
-    while(getline(file, line)) {
-        countline++;
-    }
-    file.close();
-    return countline;
-}
-
-string fileread (string& filename) { // чтение из файла
-    string result, str;
-    ifstream fileinput;
-    fileinput.open(filename);
-    while (getline(fileinput, str)) {
-        result += str + '\n';
-    }
-    result.pop_back();
-    fileinput.close();
-    return result;
-}
-
-void filerec (string& filename, string data) { // запись в файл
-    ofstream fileoutput;
-    fileoutput.open(filename);
-    fileoutput << data;
-    fileoutput.close();
-}
-
-
-void BaseDate::parse() { // ф-ия парсинга
+void BaseDate::parser() { // ф-ия парсинга
     nlohmann::json objJson;
     ifstream fileinput;
     fileinput.open("../base_date.json");
@@ -43,115 +11,66 @@ void BaseDate::parse() { // ф-ия парсинга
     BD = objJson["name"]; // Парсим каталог 
     } else {
         cout << "Объект каталога не найден!" << endl;
-        exit(-1);
+        exit(0);
     }
-
     rowLimits = objJson["tuples_limit"];
 
-    // парсим подкаталоги
     if (objJson.contains("structure") && objJson["structure"].is_object()) { // проверяем, существование объекта и является ли он объектом
         for (auto elem : objJson["structure"].items()) {
-            nametables.push_back(elem.key());
-            
+            nametables.pushBack(elem.key());
+                
             string kolonki = elem.key() + "_pk_sequence,"; // добавление первичного ключа
             for (auto str : objJson["structure"][elem.key()].items()) {
                 kolonki += str.value();
                 kolonki += ',';
             }
             kolonki.pop_back(); // удаление последней запятой
-            stlb.push_back(kolonki);
-            fileindex.push_back(1);
+            stlb.pushBack(kolonki);
+            fileindex.pushBack(1);
         }
     } else {
         cout << "Объект подкаталогов не найден!" << endl;
-        exit(-1);
+        exit(0);
     }
 }
 
-void BaseDate::mkdir() { // ф-ия формирования директории
+void BaseDate::createdirect() {
     string command;
     command = "mkdir ../" + BD; // каталог
     system(command.c_str());
 
-    for (int i = 0; i < nametables.size; ++i) { // подкаталоги и файлы в них
-        command = "mkdir ../" + BD + "/" + nametables.getvalue(i);
+    for (int i = 0; i < nametables.elementCount; ++i) { // подкаталоги и файлы в них
+        command = "mkdir ../" + BD + "/" + nametables.getElementAt(i);
         system(command.c_str());
-        string filepath = "../" + BD + "/" + nametables.getvalue(i) + "/1.csv";
+        string filepath = "../" + BD + "/" + nametables.getElementAt(i) + "/1.csv";
         ofstream file;
         file.open(filepath);
-        file << stlb.getvalue(i) << endl;
+        file << stlb.getElementAt(i) << endl;
         file.close();
 
-        // Блокировка таблицы
-        filepath = "../" + BD + "/" + nametables.getvalue(i) + "/" + nametables.getvalue(i) + "_lock.txt";
+            // Блокировка таблицы
+        filepath = "../" + BD + "/" + nametables.getElementAt(i) + "/" + nametables.getElementAt(i) + "_lock.txt";
         file.open(filepath);
         file << "open";
         file.close();
-
         // ключ
-        filepath = "../" + BD + "/" + nametables.getvalue(i) + "/" + nametables.getvalue(i) + "_pk_sequence.txt";
+        filepath = "../" + BD + "/" + nametables.getElementAt(i) + "/" + nametables.getElementAt(i) + "_pk_sequence.txt";
         file.open(filepath);
         file << "1";
         file.close();
     }
 }
 
-string BaseDate::checkcommand(string& command) { // ф-ия фильтрации команд
-    if (command.substr(0, 11) == "insert into") {
-        command.erase(0, 12);
-        return isValidInsert(command);
-    } else if (command.substr(0, 11) == "delete from") {
-        command.erase(0, 12);
-        return isValidDel(command);
-    } else if (command.substr(0, 6) == "select") {
-        command.erase(0, 7);
-        return isValidSelect(command);
-    } else if (command == "exit") {
-        exit(0);
-    } else return "Ошибка, неизвестная команда!"; 
-}
-
-
-string BaseDate::isValidInsert(string& command) { // ф-ия проверки ввода команды insert
-    string table;
-    int position = command.find_first_of(' ');
-    if (position != -1) { // проверка синтаксиса
-        table = command.substr(0, position);
-        command.erase(0, position + 1);
-        if (nametables.getindex(table) != -1) { // проверка таблицы
-            if (command.substr(0, 7) == "values ") { // проверка values
-                command.erase(0, 7);
-                position = command.find_first_of(' ');
-                if (position == -1) { // проверка синтаксиса ///////
-                    if (command[0] == '(' && command[command.size()-1] == ')') { // проверка синтаксиса скобок и их удаление
-                        command.erase(0, 1);
-                        command.pop_back();
-                        position = command.find(' ');
-                        while (position != -1) { // удаление пробелов
-                            command.erase(position);
-                            position = command.find(' ');
-                        }
-                        return insert(table, command);
-                    } else return "Ошибка, нарушен синтаксис команды!";
-                } else return "Ошибка, нарушен синтаксис команды!";
-            } else return "Ошибка, нарушен синтаксис команды!";
-        } else return "Ошибка, нет такой таблицы!";
-    } else return "Ошибка, нарушен синтаксис команды!";
-}
-
-string BaseDate::insert(string& table, string& values) { // ф-ия вставки в таблицу
+string BaseDate::checkInsert(string& table, string& values) { // ф-ия вставки в таблицу
     string filepath = "../" + BD + "/" + table + "/" + table + "_pk_sequence.txt";
-    int index = nametables.getindex(table); // получаем индекс таблицы(aka key)
+    int index = nametables.getIndex(table); // получаем индекс таблицы(aka key)
     string val = fileread(filepath);
     int valint = stoi(val);
     valint++;
     filerec(filepath, to_string(valint));
 
     if (checkLockTable(table)) {
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "close");
-
-        // вставка значений в csv, не забывая про увеличение ключа
+        lockTable(table, false);
         filepath = "../" + BD + "/" + table + "/1.csv";
         int countline = countingLine(filepath);
         int fileid = 1; // номер файла csv
@@ -159,24 +78,46 @@ string BaseDate::insert(string& table, string& values) { // ф-ия вставк
             if (countline == rowLimits) { // если достигнут лимит, то создаем/открываем другой файл
                 fileid++;
                 filepath = "../" + BD + "/" + table + "/" + to_string(fileid) + ".csv";
-                if (fileindex.getvalue(index) < fileid) {
+                if (fileindex.getElementAt(index) < fileid) {
                     fileindex.replace(index, fileid);
                 }
             } else break;
             countline = countingLine(filepath);
         }
-
         fstream file;
         file.open(filepath, ios::app);
         file << val + ',' + values + '\n';
         file.close();
 
-        filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
-        filerec(filepath, "open");
+        lockTable(table, true);
         return "Команда выполнена!";
     } else return "Ошибка, таблица используется другим пользователем!";
 }
 
+string BaseDate::Insert(string& command) { 
+    size_t position = command.find(' ');
+    if (position == string::npos) {
+        return "Ошибка, нарушен синтаксис команды";
+    }
+    string table = command.substr(0, position);
+    command.erase(0, position + 1);
+    if (nametables.getIndex(table) == -1) {
+        return "Ошибка, нет такой таблицы!";
+    }
+    if (command.substr(0, 7) != "VALUES ") {
+        return "Ошибка, нарушен синтаксис команды!";
+    }
+    command.erase(0, 7);
+    if (command.size() < 2 || command.front() != '(' || command.back() != ')') {
+        return "Ошибка, нарушен синтаксис команды!";
+    }
+    command.erase(0, 1);
+    command.pop_back();
+    command.erase(remove(command.begin(), command.end(), ' '), command.end());
+    checkInsert(table, command);
+
+    return "Операция вставки завершена успешно!";
+}
 
 string BaseDate::isValidDel(string& command) { // ф-ия обработки команды DELETE
     string table, conditions;
@@ -185,7 +126,7 @@ string BaseDate::isValidDel(string& command) { // ф-ия обработки к�
         table = command.substr(0, position);
         conditions = command.substr(position + 1);
     } else table = command;
-    if (nametables.getindex(table) != -1) { // проверка таблицы
+    if (nametables.getIndex(table) != -1) { // проверка таблицы
         if (conditions.empty()) { // если нет условий, удаляем все
             return del(table);
         } else {
@@ -197,8 +138,8 @@ string BaseDate::isValidDel(string& command) { // ф-ия обработки к�
                 if (position != -1) { // проверка синтаксиса
                     where.colona = conditions.substr(0, position);
                     conditions.erase(0, position+1);
-                    int index = nametables.getindex(table);
-                    string str = stlb.getvalue(index);
+                    int index = nametables.getIndex(table);
+                    string str = stlb.getElementAt(index);
                     stringstream ss(str);
                     bool check = false;
                     while (getline(ss, str, ',')) if (str == where.colona) check = true;
@@ -212,7 +153,7 @@ string BaseDate::isValidDel(string& command) { // ф-ия обработки к�
                             } else { // если есть логический оператор
                                 where.value = conditions.substr(0, position);
                                 conditions.erase(0, position+1);
-                                cond.push_back(where);
+                                cond.pushBack(where);
                                 position = conditions.find_first_of(' ');
                                 if ((position != -1) && (conditions.substr(0, 2) == "or" || conditions.substr(0, 3) == "and")) {
                                     where.logicOP = conditions.substr(0, position);
@@ -221,8 +162,8 @@ string BaseDate::isValidDel(string& command) { // ф-ия обработки к�
                                     if (position != -1) {
                                         where.colona = conditions.substr(0, position);
                                         conditions.erase(0, position+1);
-                                        index = nametables.getindex(table);
-                                        str = stlb.getvalue(index);
+                                        index = nametables.getIndex(table);
+                                        str = stlb.getElementAt(index);
                                         stringstream iss(str);
                                         bool check = false;
                                         while (getline(iss, str, ',')) if (str == where.colona) check = true;
@@ -232,7 +173,7 @@ string BaseDate::isValidDel(string& command) { // ф-ия обработки к�
                                                 position = conditions.find_first_of(' ');
                                                 if (position == -1) {
                                                     where.value = conditions;
-                                                    cond.push_back(where);
+                                                    cond.pushBack(where);
                                                     return delWithLogic(cond, table);
                                                 } else return "Ошибка, нарушен синтаксис команды!";
                                             } else return "Ошибка, нарушен синтаксис команды!";
@@ -250,20 +191,20 @@ string BaseDate::isValidDel(string& command) { // ф-ия обработки к�
 
 string BaseDate::del(string& table) { // ф-ия удаления всех строк таблицы
     string filepath;
-    int index = nametables.getindex(table);
+    int index = nametables.getIndex(table);
     if (checkLockTable(table)) {
         filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
         filerec(filepath, "close");
         
         // очищаем все файлы
-        int copy = fileindex.getvalue(index);
+        int copy = fileindex.getElementAt(index);
         while (copy != 0) {
             filepath = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
             filerec(filepath, "");
             copy--;
         }
 
-        filerec(filepath, stlb.getvalue(index)+"\n"); // добавляем столбцы в 1.csv
+        filerec(filepath, stlb.getElementAt(index)+"\n"); // добавляем столбцы в 1.csv
 
         filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
         filerec(filepath, "open");
@@ -273,13 +214,13 @@ string BaseDate::del(string& table) { // ф-ия удаления всех ст�
 
 string BaseDate::delWithValue(string& table, string& stolbec, string& values) { // ф-ия удаления строк таблицы по значению
     string filepath;
-    int index = nametables.getindex(table);
+    int index = nametables.getIndex(table);
     if (checkLockTable(table)) {
         filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
         filerec(filepath, "close");
 
         // нахождение индекса столбца в файле
-        string str = stlb.getvalue(index);
+        string str = stlb.getElementAt(index);
         stringstream ss(str);
         int stolbecindex = 0;
         while (getline(ss, str, ',')) {
@@ -288,7 +229,7 @@ string BaseDate::delWithValue(string& table, string& stolbec, string& values) { 
         }
 
         // удаление строк
-        int copy = fileindex.getvalue(index);
+        int copy = fileindex.getElementAt(index);
         while (copy != 0) {
             filepath = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
             string text = fileread(filepath);
@@ -320,20 +261,20 @@ string BaseDate::delWithValue(string& table, string& stolbec, string& values) { 
 
 string BaseDate::delWithLogic(SinglyLinkedList<Filter>& conditions, string& table) { // ф-ия удаления строк таблицы с логикой
     string filepath;
-    int index = nametables.getindex(table);
+    int index = nametables.getIndex(table);
     if (checkLockTable(table)) {
         filepath = "../" + BD + "/" + table + "/" + table + "_lock.txt";
         filerec(filepath, "close");
 
         // нахождение индекса столбцов в файле
         SinglyLinkedList<int> stlbindex;
-        for (int i = 0; i < conditions.size; ++i) {
-            string str = stlb.getvalue(index);
+        for (int i = 0; i < conditions.size(); ++i) {
+            string str = stlb.getElementAt(index);
             stringstream ss(str);
             int stolbecindex = 0;
             while (getline(ss, str, ',')) {
-                if (str == conditions.getvalue(i).colona) {
-                    stlbindex.push_back(stolbecindex);
+                if (str == conditions.getElementAt(i).colona) {
+                    stlbindex.pushBack(stolbecindex);
                     break;
                 }
                 stolbecindex++;
@@ -341,7 +282,7 @@ string BaseDate::delWithLogic(SinglyLinkedList<Filter>& conditions, string& tabl
         }
 
         // удаление строк
-        int copy = fileindex.getvalue(index);
+        int copy = fileindex.getElementAt(index);
         while (copy != 0) {
             filepath = "../" + BD + "/" + table + "/" + to_string(copy) + ".csv";
             string text = fileread(filepath);
@@ -349,26 +290,26 @@ string BaseDate::delWithLogic(SinglyLinkedList<Filter>& conditions, string& tabl
             string filteredRows;
             while (getline(stroka, text)) {
                 SinglyLinkedList<bool> shouldRemove;
-                for (int i = 0; i < stlbindex.size; ++i) {
+                for (int i = 0; i < stlbindex.size(); ++i) {
                     stringstream iss(text);
                     string token;
                     int currentIndex = 0;
                     bool check = false;
                     while (getline(iss, token, ',')) { 
-                        if (currentIndex == stlbindex.getvalue(i) && token == conditions.getvalue(i).value) {
+                        if (currentIndex == stlbindex.getElementAt(i) && token == conditions.getElementAt(i).value) {
                             check = true;
                             break;
                         }
                         currentIndex++;
                     }
-                    if (check) shouldRemove.push_back(true);
-                    else shouldRemove.push_back(false);
+                    if (check) shouldRemove.pushBack(true);
+                    else shouldRemove.pushBack(false);
                 }
-                if (conditions.getvalue(1).logicOP == "and") { // Если оператор И
-                    if (shouldRemove.getvalue(0) && shouldRemove.getvalue(1));
+                if (conditions.getElementAt(1).logicOP == "and") { // Если оператор И
+                    if (shouldRemove.getElementAt(0) && shouldRemove.getElementAt(1));
                     else filteredRows += text + "\n";
                 } else { // Если оператор ИЛИ
-                    if (!(shouldRemove.getvalue(0)) && !(shouldRemove.getvalue(1))) filteredRows += text + "\n";
+                    if (!(shouldRemove.getElementAt(0)) && !(shouldRemove.getElementAt(1))) filteredRows += text + "\n";
                 }
             }
             filerec(filepath, filteredRows);
@@ -400,8 +341,8 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
             ss >> conditions.table >> conditions.colona;
             bool check = false;
             int i;
-            for (i = 0; i < nametables.size; ++i) { // проверка, сущ. ли такая таблица
-                if (conditions.table == nametables.getvalue(i)) {
+            for (i = 0; i < nametables.size(); ++i) { // проверка, сущ. ли такая таблица
+                if (conditions.table == nametables.getElementAt(i)) {
                     check = true;
                     break;
                 }
@@ -410,7 +351,7 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
                 return "Нет такой таблицы!";
             }
             check = false;
-            stringstream iss(stlb.getvalue(i));
+            stringstream iss(stlb.getElementAt(i));
             while (getline(iss, token, ',')) { // проверка, сущ. ли такой столбец
                 if (token == conditions.colona) {
                     check = true;
@@ -420,7 +361,7 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
             if (!check) {
                 return "Нет такого столбца";
             }
-            cond.push_back(conditions);
+            cond.pushBack(conditions);
         }
 
         command.erase(0, command.find_first_of(' ') + 1); // скип from
@@ -435,7 +376,7 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
             int position = command.find_first_of(' ');
             if (position != -1) command.erase(0, position + 1);
             else command.erase(0);
-            if (iter + 1 > cond.size || token != cond.getvalue(iter).table) {
+            if (iter + 1 > cond.size() || token != cond.getElementAt(iter).table) {
                 return "Ошибка, указаные таблицы не совпадают или их больше!";
             }
             if (command.substr(0, 5) == "where") break; // также заканчиваем цикл если встретился WHERE
@@ -455,7 +396,7 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
                         stringstream ss(token);
                         string table, column;
                         ss >> table >> column;
-                        if (table == cond.getvalue(0).table) { // проверка таблицы в where
+                        if (table == cond.getElementAt(0).table) { // проверка таблицы в where
                             position = command.find_first_of(' ');
                             if ((position != -1) && (command[0] == '=')) {
                                 command.erase(0, position + 1);
@@ -480,13 +421,13 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
                                     if (token.find_first_of('.') == -1) { // если просто значение
                                         conditions.value = token;
                                         conditions.check = true;
-                                        values.push_back(conditions);
+                                        values.pushBack(conditions);
                                     } else { // если столбец
                                         token.replace(token.find_first_of('.'), 1, " ");
                                         stringstream stream(token);
                                         stream >> conditions.table >> conditions.colona;
                                         conditions.check = false;
-                                        values.push_back(conditions);
+                                        values.pushBack(conditions);
                                     }
                                     position = command.find_first_of(' ');
                                     if ((position != -1) && (command.substr(0, 2) == "or" || command.substr(0, 3) == "and")) {
@@ -501,12 +442,12 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
                                                 stringstream istream(token);
                                                 SinglyLinkedList<string> tables;
                                                 SinglyLinkedList<string> columns;
-                                                tables.push_back(table);
-                                                columns.push_back(column);
+                                                tables.pushBack(table);
+                                                columns.pushBack(column);
                                                 istream >> table >> column;
-                                                tables.push_back(table);
-                                                columns.push_back(column);
-                                                if (table == cond.getvalue(0).table) { // проверка таблицы в where
+                                                tables.pushBack(table);
+                                                columns.pushBack(column);
+                                                if (table == cond.getElementAt(0).table) { // проверка таблицы в where
                                                     position = command.find_first_of(' ');
                                                     if ((position != -1) && (command[0] == '=')) {
                                                         command.erase(0, position + 1);
@@ -516,7 +457,7 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
                                                                 conditions.value = command.substr(0, position);
                                                                 conditions.check = true;
                                                                 command.erase(0, position + 1);
-                                                                values.push_back(conditions);
+                                                                values.pushBack(conditions);
                                                                 return selectWithLogic(cond, tables, columns, values);
                                                             } else { // если столбец
                                                                 token = command.substr(0, position);
@@ -525,7 +466,7 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
                                                                 stringstream stream(token);
                                                                 stream >> conditions.table >> conditions.colona;
                                                                 conditions.check = false;
-                                                                values.push_back(conditions);
+                                                                values.pushBack(conditions);
                                                                 return selectWithLogic(cond, tables, columns, values);
                                                             }
                                                         } else return "Ошибка, нарушен синтаксис команды!";
@@ -545,23 +486,23 @@ string BaseDate::isValidSelect(string& command) { // ф-ия проверки в
 }
 
 string BaseDate::select(SinglyLinkedList<Filter>& conditions) { // ф-ия обычного селекта
-    for (int i = 0; i < conditions.size; ++i) {
-        bool check = checkLockTable(conditions.getvalue(i).table);
+    for (int i = 0; i < conditions.size(); ++i) {
+        bool check = checkLockTable(conditions.getElementAt(i).table);
         if (!check) {
             return "Ошибка, таблица открыта другим пользователем!";
         }
     }
     string filepath;
-    for (int i = 0; i < conditions.size; ++i) {
-        filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + conditions.getvalue(i).table + "_lock.txt";
+    for (int i = 0; i < conditions.size(); ++i) {
+        filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + conditions.getElementAt(i).table + "_lock.txt";
         filerec(filepath, "close");
     }
 
     SinglyLinkedList<int> stlbindex = findIndexStlb(conditions); // узнаем индексы столбцов после "select"
     SinglyLinkedList<string> tables = textInFile(conditions); // записываем данные из файла в переменные для дальнейшей работы
 
-    for (int i = 0; i < conditions.size; ++i) {
-        filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + conditions.getvalue(i).table + "_lock.txt";
+    for (int i = 0; i < conditions.size(); ++i) {
+        filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + conditions.getElementAt(i).table + "_lock.txt";
         filerec(filepath, "open");
     }
 
@@ -569,15 +510,15 @@ string BaseDate::select(SinglyLinkedList<Filter>& conditions) { // ф-ия об�
 }
 
 string BaseDate::selectWithValue(SinglyLinkedList<Filter>& conditions, string& table, string& stolbec, struct Filter value) { // ф-ия селекта с where для обычного условия
-    for (int i = 0; i < conditions.size; ++i) {
-        bool check = checkLockTable(conditions.getvalue(i).table);
+    for (int i = 0; i < conditions.size(); ++i) {
+        bool check = checkLockTable(conditions.getElementAt(i).table);
         if (!check) {
             return "Ошибка, таблица открыта другим пользователем!";
         }
     }
     string filepath;
-    for (int i = 0; i < conditions.size; ++i) {
-        filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + conditions.getvalue(i).table + "_lock.txt";
+    for (int i = 0; i < conditions.size(); ++i) {
+        filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + conditions.getElementAt(i).table + "_lock.txt";
         filerec(filepath, "close");
     }
 
@@ -588,9 +529,9 @@ string BaseDate::selectWithValue(SinglyLinkedList<Filter>& conditions, string& t
     SinglyLinkedList<string> column = findStlbTable(conditions, tables, stlbindexvalnext, value.table);; // записываем колонки таблицы условия после '='(нужно если условиестолбец)
     
     // фильтруем нужные строки
-    for (int i = 0; i < conditions.size; ++i) {
-        if (conditions.getvalue(i).table == table) { 
-            stringstream stream(tables.getvalue(i));
+    for (int i = 0; i < conditions.size(); ++i) {
+        if (conditions.getElementAt(i).table == table) { 
+            stringstream stream(tables.getElementAt(i));
             string str;
             string filetext;
             int iterator = 0; // нужно для условиястолбец 
@@ -606,7 +547,7 @@ string BaseDate::selectWithValue(SinglyLinkedList<Filter>& conditions, string& t
                         }
                         currentIndex++;
                     } else { // для условиястолбец
-                        if (currentIndex == stlbindexval && token == column.getvalue(iterator)) {
+                        if (currentIndex == stlbindexval && token == column.getElementAt(iterator)) {
                         filetext += str + '\n';
                         }
                         currentIndex++;
@@ -618,8 +559,8 @@ string BaseDate::selectWithValue(SinglyLinkedList<Filter>& conditions, string& t
         }
     }
 
-    for (int i = 0; i < conditions.size; ++i) {
-        filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + conditions.getvalue(i).table + "_lock.txt";
+    for (int i = 0; i < conditions.size(); ++i) {
+        filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + conditions.getElementAt(i).table + "_lock.txt";
         filerec(filepath, "open");
     }
 
@@ -627,72 +568,72 @@ string BaseDate::selectWithValue(SinglyLinkedList<Filter>& conditions, string& t
 }
 
 string BaseDate::selectWithLogic(SinglyLinkedList<Filter>& conditions, SinglyLinkedList<string>& table, SinglyLinkedList<string>& stolbec, SinglyLinkedList<Filter>& value) {
-    for (int i = 0; i < conditions.size; ++i) {
-        bool check = checkLockTable(conditions.getvalue(i).table);
+    for (int i = 0; i < conditions.size(); ++i) {
+        bool check = checkLockTable(conditions.getElementAt(i).table);
         if (!check) {
             return "Ошибка, таблица открыта другим пользователем!";
         }
     }
     string filepath;
-    for (int i = 0; i < conditions.size; ++i) {
-        filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + conditions.getvalue(i).table + "_lock.txt";
+    for (int i = 0; i < conditions.size(); ++i) {
+        filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + conditions.getElementAt(i).table + "_lock.txt";
         filerec(filepath, "close");
     }
 
     SinglyLinkedList<int> stlbindex = findIndexStlb(conditions); // узнаем индексы столбцов после "select"
     SinglyLinkedList<string> tables = textInFile(conditions); // записываем данные из файла в переменные для дальнейшей работы
     SinglyLinkedList<int> stlbindexval;// узнаем индексы столбца условия
-    for (int i = 0; i < stolbec.size; ++i) {
-        int index = findIndexStlbCond(table.getvalue(i), stolbec.getvalue(i));
-        stlbindexval.push_back(index);
+    for (int i = 0; i < stolbec.size(); ++i) {
+        int index = findIndexStlbCond(table.getElementAt(i), stolbec.getElementAt(i));
+        stlbindexval.pushBack(index);
     }
     SinglyLinkedList<int> stlbindexvalnext; // узнаем индекс столбца условия после '='(нужно если условиестолбец)
-    for (int i = 0; i < value.size; ++i) {
-        int index = findIndexStlbCond(value.getvalue(i).table, value.getvalue(i).colona); // узнаем индекс столбца условия после '='(нужно если условиестолбец)
-        stlbindexvalnext.push_back(index);
+    for (int i = 0; i < value.size(); ++i) {
+        int index = findIndexStlbCond(value.getElementAt(i).table, value.getElementAt(i).colona); // узнаем индекс столбца условия после '='(нужно если условиестолбец)
+        stlbindexvalnext.pushBack(index);
     }
     SinglyLinkedList<string> column;
-    for (int j = 0; j < value.size; ++j) {
-        if (!value.getvalue(j).check) { // если условие столбец
-            column = findStlbTable(conditions, tables, stlbindexvalnext.getvalue(j), value.getvalue(j).table);
+    for (int j = 0; j < value.size(); ++j) {
+        if (!value.getElementAt(j).check) { // если условие столбец
+            column = findStlbTable(conditions, tables, stlbindexvalnext.getElementAt(j), value.getElementAt(j).table);
         }
     }
 
     // фильтруем нужные строки
-    for (int i = 0; i < conditions.size; ++i) {
-        if (conditions.getvalue(i).table == table.getvalue(0)) {
-            stringstream stream(tables.getvalue(i));
+    for (int i = 0; i < conditions.size(); ++i) {
+        if (conditions.getElementAt(i).table == table.getElementAt(0)) {
+            stringstream stream(tables.getElementAt(i));
             string str;
             string filetext;
             int iterator = 0; // нужно для условиястолбец 
             while (getline(stream, str)) {
                 SinglyLinkedList<bool> checkstr;
-                for (int j = 0; j < value.size; ++j) {
+                for (int j = 0; j < value.size(); ++j) {
                     stringstream istream(str);
                     string token;
                     int currentIndex = 0;
                     bool check = false;
                     while (getline(istream, token, ',')) {
-                        if (value.getvalue(j).check) { // если просто условие
-                            if (currentIndex == stlbindexval.getvalue(j) && token == value.getvalue(j).value) {
+                        if (value.getElementAt(j).check) { // если просто условие
+                            if (currentIndex == stlbindexval.getElementAt(j) && token == value.getElementAt(j).value) {
                                 check = true;
                                 break;
                             }
                             currentIndex++;
                         } else { // если условие столбец
-                            if (currentIndex == stlbindexval.getvalue(j) && token == column.getvalue(iterator)) {
+                            if (currentIndex == stlbindexval.getElementAt(j) && token == column.getElementAt(iterator)) {
                                 check = true;
                                 break;
                             }
                             currentIndex++;
                         }
                     }
-                    checkstr.push_back(check);
+                    checkstr.pushBack(check);
                 }
-                if (value.getvalue(1).logicOP == "and") { // Если оператор И
-                    if (checkstr.getvalue(0) && checkstr.getvalue(1)) filetext += str + "\n";
+                if (value.getElementAt(1).logicOP == "and") { // Если оператор И
+                    if (checkstr.getElementAt(0) && checkstr.getElementAt(1)) filetext += str + "\n";
                 } else { // Если оператор ИЛИ
-                    if (!checkstr.getvalue(0) && !checkstr.getvalue(1));
+                    if (!checkstr.getElementAt(0) && !checkstr.getElementAt(1));
                     else filetext += str + "\n";
                 }
                 iterator++;
@@ -701,8 +642,8 @@ string BaseDate::selectWithLogic(SinglyLinkedList<Filter>& conditions, SinglyLin
         }
     }
 
-    for (int i = 0; i < conditions.size; ++i) {
-        filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + conditions.getvalue(i).table + "_lock.txt";
+    for (int i = 0; i < conditions.size(); ++i) {
+        filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + conditions.getElementAt(i).table + "_lock.txt";
         filerec(filepath, "open");
     }
 
@@ -717,16 +658,22 @@ bool BaseDate::checkLockTable(string table) { // ф-ия проверки, за�
     else return false;
 }
 
+string BaseDate::lockTable(string& table, bool open) {
+    string fin = "../" + BD + "/" + table + "/" + table + "_lock.txt";
+    filerec(fin, open ? "open" : "close");
+    return fin;
+}
+
 SinglyLinkedList<int> BaseDate::findIndexStlb(SinglyLinkedList<Filter>& conditions) { // ф-ия нахождения индекса столбцов(для select)
     SinglyLinkedList<int> stlbindex;
-    for (int i = 0; i < conditions.size; ++i) {
-        int index = nametables.getindex(conditions.getvalue(i).table);
-        string str = stlb.getvalue(index);
+    for (int i = 0; i < conditions.size(); ++i) {
+        int index = nametables.getIndex(conditions.getElementAt(i).table);
+        string str = stlb.getElementAt(index);
         stringstream ss(str);
         int stolbecindex = 0;
         while (getline(ss, str, ',')) {
-            if (str == conditions.getvalue(i).colona) {
-                stlbindex.push_back(stolbecindex);
+            if (str == conditions.getElementAt(i).colona) {
+                stlbindex.pushBack(stolbecindex);
                 break;
             }
             stolbecindex++;
@@ -736,8 +683,8 @@ SinglyLinkedList<int> BaseDate::findIndexStlb(SinglyLinkedList<Filter>& conditio
 }
 
 int BaseDate::findIndexStlbCond(string table, string stolbec) { // ф-ия нахождения индекса столбца условия(для select)
-    int index = nametables.getindex(table);
-    string str = stlb.getvalue(index);
+    int index = nametables.getIndex(table);
+    string str = stlb.getElementAt(index);
     stringstream ss(str);
     int stlbindex = 0;
     while (getline(ss, str, ',')) {
@@ -750,28 +697,28 @@ int BaseDate::findIndexStlbCond(string table, string stolbec) { // ф-ия на�
 SinglyLinkedList<string> BaseDate::textInFile(SinglyLinkedList<Filter>& conditions) { // ф-ия инпута текста из таблиц(для select)
     string filepath;
     SinglyLinkedList<string> tables;
-    for (int i = 0; i < conditions.size; ++i) {
+    for (int i = 0; i < conditions.size(); ++i) {
         string filetext;
-        int index = nametables.getindex(conditions.getvalue(i).table);
+        int index = nametables.getIndex(conditions.getElementAt(i).table);
         int iter = 0;
         do {
             iter++;
-            filepath = "../" + BD + '/' + conditions.getvalue(i).table + '/' + to_string(iter) + ".csv";
+            filepath = "../" + BD + '/' + conditions.getElementAt(i).table + '/' + to_string(iter) + ".csv";
             string text = fileread(filepath);
             int position = text.find('\n'); // удаляем названия столбцов
             text.erase(0, position + 1);
             filetext += text + '\n';
-        } while (iter != fileindex.getvalue(index));
-        tables.push_back(filetext);
+        } while (iter != fileindex.getElementAt(index));
+        tables.pushBack(filetext);
     }
     return tables;
 }
 
 SinglyLinkedList<string> BaseDate::findStlbTable(SinglyLinkedList<Filter>& conditions, SinglyLinkedList<string>& tables, int stlbindexvalnext, string table) { // ф-ия инпута нужных колонок из таблиц для условиястолбец(для select)
     SinglyLinkedList<string> column;
-    for (int i = 0; i < conditions.size; ++i) {
-        if (conditions.getvalue(i).table == table) {
-            stringstream stream(tables.getvalue(i));
+    for (int i = 0; i < conditions.size(); ++i) {
+        if (conditions.getElementAt(i).table == table) {
+            stringstream stream(tables.getElementAt(i));
             string str;
             while (getline(stream, str)) {
                 stringstream istream(str);
@@ -779,7 +726,7 @@ SinglyLinkedList<string> BaseDate::findStlbTable(SinglyLinkedList<Filter>& condi
                 int currentIndex = 0;
                 while (getline(istream, token, ',')) {
                     if (currentIndex == stlbindexvalnext) {
-                        column.push_back(token);
+                        column.pushBack(token);
                         break;
                     }
                     currentIndex++;
@@ -792,26 +739,26 @@ SinglyLinkedList<string> BaseDate::findStlbTable(SinglyLinkedList<Filter>& condi
 
 string BaseDate::sample(SinglyLinkedList<int>& stlbindex, SinglyLinkedList<string>& tables) { // ф-ия выборки(для select)
     string result;
-    for (int i = 0; i < tables.size - 1; ++i) {
-        stringstream onefile(tables.getvalue(i));
+    for (int i = 0; i < tables.size() - 1; ++i) {
+        stringstream onefile(tables.getElementAt(i));
         string token;
         while (getline(onefile, token)) {
             string needstlb;
             stringstream ionefile(token);
             int currentIndex = 0;
             while (getline(ionefile, token, ',')) {
-                if (currentIndex == stlbindex.getvalue(i)) {
+                if (currentIndex == stlbindex.getElementAt(i)) {
                     needstlb = token;
                     break;
                 }
                 currentIndex++;
             }
-            stringstream twofile(tables.getvalue(i + 1));
+            stringstream twofile(tables.getElementAt(i + 1));
             while (getline(twofile, token)) {
                 stringstream itwofile(token);
                 currentIndex = 0;
                 while (getline(itwofile, token, ',')) {
-                    if (currentIndex == stlbindex.getvalue(i + 1)) {
+                    if (currentIndex == stlbindex.getElementAt(i + 1)) {
                         result += needstlb + ' ' + token + '\n';
                         break;
                     }

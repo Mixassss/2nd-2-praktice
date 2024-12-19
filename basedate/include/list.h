@@ -1,57 +1,40 @@
-#pragma once
+#ifndef list_h
+#define list_h
 
 #include "utility.h"
 
-template<typename T>
+template <typename T>
 struct Node {
     T data;
-    Node* next;
-
-    Node(T value); // конструктор узла
+    Node* next; //Указатель на след. элемент
+    
+    Node(T value); //Конструктор узла
 };
-template<typename T>
+
+template <typename T>
 struct SinglyLinkedList {
     Node<T>* head;
-    int size = 0;
+    size_t elementCount = 0;
 
-    SinglyLinkedList(); // конструктор листа
-    ~SinglyLinkedList(); // деструктор
+    SinglyLinkedList(); //Конструктор
+    ~SinglyLinkedList(); //Деконструктор
 
-    void print(); // вывод списка
-    void push_front(T value); // добавление элемента в начало
-    void push_back(T value); // добавление элемента в конец
-    void pop_front(); // удаление элемента с начала
-    void pop_back(); // удаление элемента с конца
-    void remove(T value); // удаление элемента по значению
-    void replace(int index, T newValue); // ф-ия замены элемента по индексу
-    int getindex(T value); // поиск элемента по значению
-    T getvalue(int index); // поиск элемента по индексу
+    bool isEmpty() const;
+    void print(); // ф-ия вывода списка
+    void pushFront(T value); //Добавление в начало списка
+    void pushBack(T value); //Добавление в конец списка
+    void popFront(); //Удаление в начале списка
+    void popBack(); //Удаление в конце списка
+    void removeAt(T value); //Удаление по индексу
+    bool find(T value); //Поиск значений в списке
+    void clearSList();
+    T getElementAt(int index) const;
+    int getIndex(T value);
+    void replace(int index, T newValue);
+    Node<T>* getHead() const;
+    size_t size();
 };
 
-template <typename T>
-struct Node2 {
-    T data;
-    Node2* next;
-    Node2* prev;
+#include "../src/list.cpp"
 
-    Node2(T value); // конструктор узла
-};
-template <typename T>
-struct DoublyLinkedList {
-    Node2<T>* head;
-    Node2<T>* tail;
-    int size = 0;
-
-    DoublyLinkedList(); // конструктор листа
-    ~DoublyLinkedList(); // деструктор
-
-    void print(); // вывод списка
-    void push_front(T value); // добавление элемента в начало
-    void push_back(T value); // добавление элемента в конец
-    void pop_front(); // удаление элемента в начале
-    void pop_back(); // удаление элемента в конце
-    void remove(T value); // удаление элемента по значению
-    bool find(T value); // поиска элемента по значению
-};
-
-#include "../src/list.cpp" // Включаем реализацию шаблона
+#endif // LIST_H
